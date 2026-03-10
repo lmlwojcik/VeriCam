@@ -5,7 +5,7 @@ def gen_parser():
     parser = argparse.ArgumentParser()
 
     # Model arguments
-    parser.add_argument('-c', '--model_config', default="configs/models/resnet50.json", type=str)
+    parser.add_argument('-c', '--model_config', default="configs/models/vit.json", type=str)
     parser.add_argument('-n', '--run_name', default="test_drive_v0", type=str)
     parser.add_argument('-r', '--resume', action='store_true')
 
