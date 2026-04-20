@@ -1,0 +1,10 @@
+{
+    "model_name": "vit_pretrained",
+    "model_args": {
+        "model_cfg": "vit_b_16",
+        "vit_weights": "IMAGENET1K_V1",
+        "freeze": true,
+        "save_path": "saved/vitb16",
+        "n_classes": 1
+    }
+}
