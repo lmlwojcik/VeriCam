@@ -39,8 +39,10 @@ class Attention(nn.Module):
                  qkv_bias: bool = False,
                  qk_scale: Optional[None] = None,
                  attn_drop: float = 0.,
-                 proj_drop: float = 0.):
+                 proj_drop: float = 0.,
+                 device: torch.device = torch.device('cpu')):
         super().__init__()
+        self.device = device
         self.num_heads = num_heads
         head_dim = dim // num_heads
         # NOTE scale factor was wrong in my original version, can set manually to be compat with prev weights
@@ -53,18 +55,18 @@ class Attention(nn.Module):
 
     def forward(self, x):
         
-        with torch.cuda.amp.autocast(True):
+        with torch.amp.autocast(self.device):
             batch_size, num_token, embed_dim = x.shape
             #qkv is [3,batch_size,num_heads,num_token, embed_dim//num_heads]
             qkv = self.qkv(x).reshape(
                 batch_size, num_token, 3, self.num_heads, embed_dim // self.num_heads).permute(2, 0, 3, 1, 4)
-        with torch.cuda.amp.autocast(False):
+        with torch.amp.autocast(self.device):
             q, k, v = qkv[0].float(), qkv[1].float(), qkv[2].float()
             attn = (q @ k.transpose(-2, -1)) * self.scale
             attn = attn.softmax(dim=-1)
             attn = self.attn_drop(attn)
             x = (attn @ v).transpose(1, 2).reshape(batch_size, num_token, embed_dim)
-        with torch.cuda.amp.autocast(True):
+        with torch.amp.autocast(self.device):
             x = self.proj(x)
             x = self.proj_drop(x)
         return x
@@ -84,8 +86,11 @@ class Block(nn.Module):
                  drop_path: float = 0.,
                  act_layer: Callable = nn.ReLU6,
                  norm_layer: str = "ln", 
-                 patch_n: int = 144):
+                 patch_n: int = 144,
+                 device: torch.device = torch.device('cpu')):
         super().__init__()
+
+        self.device = device
 
         if norm_layer == "bn":
             self.norm1 = VITBatchNorm(num_features=num_patches)
@@ -95,7 +100,8 @@ class Block(nn.Module):
             self.norm2 = nn.LayerNorm(dim)
 
         self.attn = Attention(
-            dim, num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=drop)
+            dim, num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale,
+            attn_drop=attn_drop, proj_drop=drop, device=device)
         # NOTE: drop path for stochastic depth, we shall see if this is better than dropout here
         self.drop_path = DropPath(
             drop_path) if drop_path > 0. else nn.Identity()
@@ -106,7 +112,7 @@ class Block(nn.Module):
 
     def forward(self, x):
         x = x + self.drop_path(self.attn(self.norm1(x)))
-        with torch.cuda.amp.autocast(True):
+        with torch.amp.autocast(self.device):
             x = x + self.drop_path(self.mlp(self.norm2(x)))
         return x
 
@@ -154,8 +160,10 @@ class VisionTransformer(nn.Module):
                  norm_layer: str = "ln",
                  mask_ratio = 0.1,
                  using_checkpoint = False,
+                 device = 'cpu'
                  ):
         super().__init__()
+        self.device = device
         self.num_classes = num_classes
         # num_features for consistency with other models
         self.num_features = self.embed_dim = embed_dim
@@ -179,7 +187,8 @@ class VisionTransformer(nn.Module):
             [
                 Block(dim=embed_dim, num_heads=num_heads, mlp_ratio=mlp_ratio, qkv_bias=qkv_bias, qk_scale=qk_scale,
                       drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[i], norm_layer=norm_layer,
-                      num_patches=num_patches, patch_n=patch_n)
+                      num_patches=num_patches, patch_n=patch_n,
+                      device=device)
                 for i in range(depth)]
         )
         self.extra_gflops = 0.0
