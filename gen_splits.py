@@ -4,7 +4,7 @@ import random
 import argparse
 
 def main(
-        generate_triplet, true_ratio,
+        generate_triplet, true_ratio, val_ratio,
         test_ratio, ratio_test_mixed, ratio_test_unique, min_instances,
         total_pairs, seed, camera_info, index_ignore, out_file
     ):
@@ -33,8 +33,9 @@ def main(
     cams_train = classes_list[:n_train_cams]
 
     # Calculating number of instances
-    n_train = math.ceil(total_pairs * (1-test_ratio))
-    n_test = total_pairs - n_train
+    n_train = math.ceil(total_pairs * (1-(val_ratio+test_ratio)))
+    n_val = math.ceil(total_pairs*val_ratio)
+    n_test = total_pairs - (n_train + n_val)
 
     n_test_mixed = math.ceil(n_test*ratio_test_mixed)
     n_test_unique = math.ceil(n_test*ratio_test_unique)
@@ -55,6 +56,7 @@ def main(
     }
 
     train_instances = []
+    val_instances = []
     test_instances_known = []
     test_instances_mixed = []
     test_instances_unique = []
@@ -66,6 +68,12 @@ def main(
             anchor, positive = random.sample(dts[chosen], 2)
             negative = random.choice(dts[neg_cam])
             train_instances.append((anchor, positive, negative))
+
+        for _ in range(n_val):
+            chosen, neg_cam = random.sample(cams_train, 2)
+            anchor, positive = random.sample(dts[chosen], 2)
+            negative = random.choice(dts[neg_cam])
+            val_instances.append((anchor, positive, negative))
 
         for _ in range(n_test_known):
             chosen, neg_cam = random.sample(cams_train, 2)
@@ -101,6 +109,14 @@ def main(
                 other = random.choice(dts[neg_cam])
             train_instances.append((anchor, other, positive_sample))
 
+        for _ in range(n_val):
+            positive_sample = True if random.random() < true_ratio else False
+            chosen, neg_cam = random.sample(cams_train, 2)
+            anchor, other = random.sample(dts[chosen], 2)
+            if not positive_sample:
+                other = random.choice(dts[neg_cam])
+            val_instances.append((anchor, other, positive_sample))
+
         for _ in range(n_test_known):
             positive_sample = True if random.random() < true_ratio else False
             chosen, neg_cam = random.sample(cams_train, 2)
@@ -134,6 +150,7 @@ def main(
 
     protocol['data'] = {
         "train_instances": train_instances,
+        "val_instances": val_instances,
         "test_instances_known": test_instances_known,
         "test_instances_mixed": test_instances_mixed,
         "test_instances_unique": test_instances_unique
@@ -150,7 +167,8 @@ if __name__ == "__main__":
 
     parser.add_argument("--generate_triplet", action='store_true', default=False)
     parser.add_argument("--true_ratio", type=float, default=None)
-    parser.add_argument("--test_ratio", type=float, default=0.5)
+    parser.add_argument("--val_ratio", type=float, default=0.1)
+    parser.add_argument("--test_ratio", type=float, default=0.4)
     parser.add_argument("--ratio_test_mixed", type=float, default=0.1)
     parser.add_argument("--ratio_test_unique", type=float, default=0.7)
     parser.add_argument("--min_instances", type=int, default=2)
