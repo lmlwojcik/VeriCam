@@ -36,7 +36,7 @@ def resize_with_pad(image,
 def load_image(fname, size, device):
     im = cv2.cvtColor(cv2.imread(fname), cv2.COLOR_BGR2RGB)
     im = torch.Tensor(resize_with_pad(im, size)).to(device)
-    im = torch.permute(neg, (2, 0, 1))
+    im = torch.permute(im, (2, 0, 1))
     return im
 
 class DynamicDataset(Dataset):
@@ -76,7 +76,7 @@ class DynamicDataset(Dataset):
             anchor_file, pos_file = random.sample(self.dataset[anchor_class], k=2)
             neg_file = random.choice(self.dataset[neg_class])
 
-            im = load_image(anchor_file, self.size, self.device)
+            anchor = load_image(anchor_file, self.size, self.device)
             pos = load_image(pos_file, self.size, self.device)
             neg = load_image(neg_file, self.size, self.device)
 
@@ -109,11 +109,11 @@ class StaticDataset(Dataset):
         
         if partition == 'train':
             self.dataset = self.protocol['training_instances']
-        elif partition == 'test_known'
+        elif partition == 'test_known':
             self.dataset = self.protocol['test_instances_known']
-        elif partition == 'test_mixed'
+        elif partition == 'test_mixed':
             self.dataset = self.protocol['test_instances_mixed']
-        elif partition == 'test_unique'
+        elif partition == 'test_unique':
             self.dataset = self.protocol['test_instances_unique']
 
         self.use_triplet = self.protocol['config']['type'] == "triplet"
