@@ -68,38 +68,6 @@ def main(
             anchor, positive = random.sample(dts[chosen], 2)
             negative = random.choice(dts[neg_cam])
             train_instances.append((anchor, positive, negative))
-
-        for _ in range(n_val):
-            chosen, neg_cam = random.sample(cams_train, 2)
-            anchor, positive = random.sample(dts[chosen], 2)
-            negative = random.choice(dts[neg_cam])
-            val_instances.append((anchor, positive, negative))
-
-        for _ in range(n_test_known):
-            chosen, neg_cam = random.sample(cams_train, 2)
-            anchor, positive = random.sample(dts[chosen], 2)
-            negative = random.choice(dts[neg_cam])
-            test_instances_known.append((anchor, positive, negative))
-
-        for _ in range(n_test_mixed):
-            true_known = True if random.random() < 0.5 else False
-            if true_known:
-                chosen = random.choice(cams_train)
-                neg_cam = random.choice(cams_test)
-            else:
-                chosen = random.choice(cams_test)
-                neg_cam = random.choice(cams_train)
-
-            anchor, positive = random.sample(dts[chosen], 2)
-            negative = random.choice(dts[neg_cam])
-            test_instances_mixed.append((anchor, positive, negative))
-
-        for _ in range(n_test_unique):
-            chosen, neg_cam = random.sample(cams_test, 2)
-            anchor, positive = random.sample(dts[chosen], 2)
-            negative = random.choice(dts[neg_cam])
-            test_instances_unique.append((anchor, positive, negative))
-
     else:
         for _ in range(n_train):
             positive_sample = True if random.random() < true_ratio else False
@@ -109,44 +77,47 @@ def main(
                 other = random.choice(dts[neg_cam])
             train_instances.append((anchor, other, positive_sample))
 
-        for _ in range(n_val):
-            positive_sample = True if random.random() < true_ratio else False
-            chosen, neg_cam = random.sample(cams_train, 2)
-            anchor, other = random.sample(dts[chosen], 2)
-            if not positive_sample:
-                other = random.choice(dts[neg_cam])
-            val_instances.append((anchor, other, positive_sample))
+    if true_ratio is None:
+        true_ratio = 0.5
 
-        for _ in range(n_test_known):
-            positive_sample = True if random.random() < true_ratio else False
-            chosen, neg_cam = random.sample(cams_train, 2)
-            anchor, other = random.sample(dts[chosen], 2)
-            if not positive_sample:
-                other = random.choice(dts[neg_cam])
-            test_instances_known.append((anchor, other, positive_sample))
+    for _ in range(n_val):
+        positive_sample = True if random.random() < true_ratio else False
+        chosen, neg_cam = random.sample(cams_train, 2)
+        anchor, other = random.sample(dts[chosen], 2)
+        if not positive_sample:
+            other = random.choice(dts[neg_cam])
+        val_instances.append((anchor, other, positive_sample))
 
-        for _ in range(n_test_mixed):
-            true_known = True if random.random() < 0.5 else False
-            if true_known:
-                chosen = random.choice(cams_train)
-                neg_cam = random.choice(cams_test)
-            else:
-                chosen = random.choice(cams_test)
-                neg_cam = random.choice(cams_train)
+    for _ in range(n_test_known):
+        positive_sample = True if random.random() < true_ratio else False
+        chosen, neg_cam = random.sample(cams_train, 2)
+        anchor, other = random.sample(dts[chosen], 2)
+        if not positive_sample:
+            other = random.choice(dts[neg_cam])
+        test_instances_known.append((anchor, other, positive_sample))
 
-            positive_sample = True if random.random() < true_ratio else False
-            anchor, other = random.sample(dts[chosen], 2)
-            if not positive_sample:
-                other = random.choice(dts[neg_cam])
-            test_instances_mixed.append((anchor, other, positive_sample))
+    for _ in range(n_test_mixed):
+        true_known = True if random.random() < 0.5 else False
+        if true_known:
+            chosen = random.choice(cams_train)
+            neg_cam = random.choice(cams_test)
+        else:
+            chosen = random.choice(cams_test)
+            neg_cam = random.choice(cams_train)
 
-        for _ in range(n_test_unique):
-            positive_sample = True if random.random() < true_ratio else False
-            chosen, neg_cam = random.sample(cams_test, 2)
-            anchor, other = random.sample(dts[chosen], 2)
-            if not positive_sample:
-                other = random.choice(dts[neg_cam])
-            test_instances_unique.append((anchor, other, positive_sample))
+        positive_sample = True if random.random() < true_ratio else False
+        anchor, other = random.sample(dts[chosen], 2)
+        if not positive_sample:
+            other = random.choice(dts[neg_cam])
+        test_instances_mixed.append((anchor, other, positive_sample))
+
+    for _ in range(n_test_unique):
+        positive_sample = True if random.random() < true_ratio else False
+        chosen, neg_cam = random.sample(cams_test, 2)
+        anchor, other = random.sample(dts[chosen], 2)
+        if not positive_sample:
+            other = random.choice(dts[neg_cam])
+        test_instances_unique.append((anchor, other, positive_sample))
 
     protocol['data'] = {
         "train_instances": train_instances,

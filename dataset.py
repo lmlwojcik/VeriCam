@@ -109,14 +109,18 @@ class StaticDataset(Dataset):
         
         if partition == 'train':
             self.dataset = self.protocol['training_instances']
-        elif partition == 'test_known':
-            self.dataset = self.protocol['test_instances_known']
-        elif partition == 'test_mixed':
-            self.dataset = self.protocol['test_instances_mixed']
-        elif partition == 'test_unique':
-            self.dataset = self.protocol['test_instances_unique']
+            self.use_triplet = self.protocol['config']['type'] == "triplet"
+        else:
+            self.use_triplet = False
+            elif partition == 'val':
+                self.dataset = self.protocol['val_instances']
+            elif partition == 'test_known':
+                self.dataset = self.protocol['test_instances_known']
+            elif partition == 'test_mixed':
+                self.dataset = self.protocol['test_instances_mixed']
+            elif partition == 'test_unique':
+                self.dataset = self.protocol['test_instances_unique']
 
-        self.use_triplet = self.protocol['config']['type'] == "triplet"
         self.device = device
         self.size = size
 
