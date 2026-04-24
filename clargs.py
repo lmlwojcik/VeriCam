@@ -1,3 +1,4 @@
+from time import time
 import json
 import argparse
 
@@ -7,15 +8,16 @@ def gen_parser():
     # Model arguments
     parser.add_argument('-c', '--model_config', default="configs/models/vit.json", type=str)
     parser.add_argument('-n', '--run_name', default="test_drive_v0", type=str)
+    parser.add_argument('-s', '--seed', default=None, type=int)
     parser.add_argument('-r', '--resume', action='store_true')
 
+    # Data arguments
+    parser.add_argument('-d', '--dataset' default="./datasets/protocol.json", type=str)
+
     # Training arguments
-    parser.add_argument('-t', '--train', action='store_true')
-    parser.add_argument('-tc', '--train_config', default="configs/train/trainer_baseline.json", type=str)
-    parser.add_argument('-v', '--validate', action='store_true')
-    parser.add_argument('-tv', '--validation_config', default="configs/train/validation_baseline.json", type=str)
-    parser.add_argument('-p', '--predict', action='store_true') # test
-    parser.add_argument('-tp', '--predict_config', default="configs/train/evaluation_baseline.json", type=str)
+    parser.add_argument('-t', '--train_config', default=None, type=str)
+    parser.add_argument('-v', '--test_config', default=None, type=str)
+    parser.add_argument('-p', '--predict_config', default=None, type=str)
 
     # Training parameters fine-tuners (overrides config files)
     parser.add_argument('-b', '--batch_size', default=None, type=int)
@@ -32,26 +34,29 @@ def get_args():
     clargs = parser.parse_args()
     with open(clargs.model_config, "r") as fd:
         model_config = json.load(fd)
+    if clargs.seed is None:
+        seed = int(time())
 
     experiment_args = {
         'model_config': model_config,
         'run_name': clargs.run_name,
+        'seed': seed,
         'resume': clargs.resume
     }
 
-    if clargs.train:
+    if clargs.train_config is not None:
         with open(clargs.train_config, "r") as fd:
             train_config = json.load(fd)
     else:
         train_config = None
 
-    if clargs.validate:
+    if clargs.test_config is not None:
         with open(clargs.validation_config, "r") as fd:
             validation_config = json.load(fd)
     else:
         validation_config = None
 
-    if clargs.predict:
+    if clargs.predict_config is not None:
         with open(clargs.predict_config, "r") as fd:
             predict_config = json.load(fd)
     else:
