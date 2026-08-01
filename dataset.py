@@ -4,6 +4,8 @@ import cv2
 
 import random
 import json
+import time
+import os
 
 def resize_with_pad(image, 
                     new_shape, 
@@ -39,27 +41,45 @@ def load_image(fname, size, device):
     return im
 
 class DynamicDataset(Dataset):
-    def __init__(self, cam_info_file, n_samples, size=[256, 256],
-                device='cpu', use_triplet=True, true_ratio=0.3, exclude_idx=[], seed=None):
+    def __init__(
+            self,
+            protocol,
+            images_dir,
+            cam_annotations,
+            n_samples,
+            partition='train',
+            size=[224, 224],
+            device='cpu',
+            use_triplet=True,
+            true_ratio=0.3,
+            exclude_idx=[],
+            seed=None
+        ):
+
+        self.images_dir = images_dir
         self.use_triplet = use_triplet
         self.true_ratio = true_ratio
         self.n_samples = n_samples
         self.device = device
         self.size = size
 
+        # Seed for random is set on main, this is just for logging
         if seed is None:
             seed = int(time.time())
         self.seed = seed
-        # Seed for random is set on main, this is just for logging
 
-        with open(cam_info_file, "r") as fd:
+        with open(protocol, "r") as fd:
+            valid_cams = json.load(fd)[partition]
+        self.valid_classes = [str(x) for x in valid_cams]
+
+        with open(cam_annotations, "r") as fd:
             ls = json.load(fd)
         for idx in exclude_idx:
             del ls[idx]
+        for k in ls.keys():
+            ls[k] = [os.path.join(self.images_dir, x) for x in ls[k]]
         
         self.classes = list(ls.keys())
-        self.valid_classes = [x for x,v in ls.items() if len(v) >= 2]
-
         self.dataset = ls
 
     def __len__(self):
@@ -151,7 +171,7 @@ class StaticDataset(Dataset):
 
 
 class MixedDatasetTrain(Dataset):
-    def __init__(self, protocol_file, size=[224, 224], partition='train',
+    def __init__(self, protocol_file, size=[224, 224],
                 device='cuda:0', seed=None, steps=1000):
 
         with open(protocol_file, "r") as fd:
