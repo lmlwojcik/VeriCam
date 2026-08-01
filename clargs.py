@@ -5,21 +5,27 @@ import argparse
 def gen_parser():
     parser = argparse.ArgumentParser()
 
-    # Model arguments
-    parser.add_argument('-c', '--model_config', default="configs/models/vit.json", type=str)
+    # Model / Experiment arguments
+    parser.add_argument('-mc', '--model_config', default="configs/models/vit.json", type=str)
+    parser.add_argument('-rt', '--run_type', default="inter", type=str)
     parser.add_argument('-n', '--run_name', default="test_drive_v0", type=str)
     parser.add_argument('-s', '--seed', default=None, type=int)
+    parser.add_argument('-sp', '--save_path', default="results/", type=str)
     parser.add_argument('-r', '--resume', action='store_true')
 
     # Data arguments
-    parser.add_argument('-d', '--dataset' default="./datasets/protocol.json", type=str)
+    parser.add_argument('-dc', '--dataset_config', default=None, type=str)
+    parser.add_argument('-i', '--images_dir', default="./datasets/protocol.json", type=str)
+    parser.add_argument('-p', '--protocol', default="./datasets/protocol.json", type=str)
+    parser.add_argument('-ca', '--cam_annotations', default="./datasets/protocol.json", type=str)
 
     # Training arguments
-    parser.add_argument('-t', '--train_config', default=None, type=str)
-    parser.add_argument('-v', '--test_config', default=None, type=str)
-    parser.add_argument('-p', '--predict_config', default=None, type=str)
+    parser.add_argument('-tc', '--train_config', default=None, type=str)
+    parser.add_argument('-ec', '--test_config', default=None, type=str)
+    parser.add_argument('-pc', '--predict_config', default=None, type=str)
 
     # Training parameters fine-tuners (overrides config files)
+    # TO-DO: update these args
     parser.add_argument('-b', '--batch_size', default=None, type=int)
     parser.add_argument('-l', '--loss', default=None, type=str)
     parser.add_argument('-lr', '--learning_rate', default=None, type=str)
@@ -36,12 +42,25 @@ def get_args():
         model_config = json.load(fd)
     if clargs.seed is None:
         seed = int(time())
+    
+    if clargs.dataset_config is not None:
+        with open(clargs.dataset_config, 'r') as fd:
+            data_args = json.load(fd)
+    else:
+        data_args = {
+            'images_dir': clargs.images_dir,
+            'protocol': clargs.protocol,
+            'cam_annotations': clargs.cams_annotations
+        }
 
     experiment_args = {
         'model_config': model_config,
         'run_name': clargs.run_name,
+        'run_type': clargs.run_type,
+        'resume': clargs.resume,
         'seed': seed,
-        'resume': clargs.resume
+        'data_args': data_args,
+        'save_path': clargs.save_path
     }
 
     if clargs.train_config is not None:
@@ -51,10 +70,10 @@ def get_args():
         train_config = None
 
     if clargs.test_config is not None:
-        with open(clargs.validation_config, "r") as fd:
-            validation_config = json.load(fd)
+        with open(clargs.test_config, "r") as fd:
+            test_config = json.load(fd)
     else:
-        validation_config = None
+        test_config = None
 
     if clargs.predict_config is not None:
         with open(clargs.predict_config, "r") as fd:
@@ -64,7 +83,7 @@ def get_args():
 
     training_args = {
         'training_config': train_config,
-        'validation_config': validation_config,
+        'test_config': test_config,
         'predict_config': predict_config
     }
 
