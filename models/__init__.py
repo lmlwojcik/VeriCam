@@ -5,7 +5,7 @@ from .pretrained import ViT_pretrained
 
 def create_model(cfg):
     if cfg['model_name'] == 'vit':
-        return VisionTransformer(cfg['model_args'])
+        return VisionTransformer(**cfg['model_args'])
     elif cfg['model_name'] == 'vit_pretrained':
         return ViT_pretrained(cfg['model_args'])
     else:
