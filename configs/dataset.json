@@ -1,0 +1,5 @@
+{
+    "protocol": "/hddevice/nobackup3/lmlwojcik/datasets/LPLCv2/protocols/cvef/base.json",
+    "images_dir": "/hddevice/nobackup3/lmlwojcik/datasets/LPLCv2/src_images/",
+    "cam_annotations": "/hddevice/nobackup3/lmlwojcik/datasets/LPLCv2/cams.json"
+}

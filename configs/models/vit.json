@@ -1,6 +1,6 @@
 {
     "model_name": "vit",
-    "network_args": {
+    "model_args": {
         "img_size": 224,
         "patch_size": 14,
         "in_channels": 3,
@@ -8,7 +8,7 @@
         "embed_dim": 768,
         "depth": 12,
         "num_heads": 12,
-        "mpl_ratio": 4.0,
+        "mlp_ratio": 4.0,
         "device": "cuda:0"
     }
 }

@@ -3,8 +3,8 @@
     "model_args": {
         "model_cfg": "vit_b_16",
         "vit_weights": "IMAGENET1K_V1",
-        "freeze": true,
+        "freeze": false,
         "save_path": "saved/vitb16",
-        "n_classes": 1
-    }
+        "n_classes": 512
+    }   
 }

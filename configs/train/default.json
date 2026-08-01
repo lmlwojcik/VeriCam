@@ -1,0 +1,46 @@
+{
+    "use_gpu": "0",
+    "loss": "triplet",
+    "optim": "adam",
+    "optim_config": {
+        "lr": 1e-4
+    },
+    "scheduler_config": {
+        "factor": 0.75,
+        "patience": 5,
+        "min_lr": 5e-06
+    },
+    "yield_config": {
+        "method": "steps",
+        "max_steps": 120,
+        "logs": ["train_loss", "val_acc", "val_f1"],
+        "max_epochs": 100
+    },
+    "log_config": {
+        "experiment_name": "training_logs",
+        "method": "epoch",
+        "steps": 1,
+        "loss_log": {
+            "metrics": ["train_loss", "val_loss"]
+        },
+        "metric_log": {
+            "metrics": ["train_acc", "train_micro_f1",  "train_macro_f1",
+                        "val_acc", "val_micro_f1", "val_macro_f1"]
+        }
+    },
+
+    "dataset_type": "static",
+    "shuffle": true,
+    "batch_size": 16,
+    "use_triplet": true,
+    "train_steps": 5000,
+    "val_steps": 500,
+
+    "validate": true,
+    "do_es": true,
+    "patience": 100,
+    "es_metric": "val_acc",
+
+    "save_last": true,
+    "save_best": true
+}
