@@ -47,6 +47,7 @@ class DynamicDataset(Dataset):
             images_dir,
             cam_annotations,
             n_samples,
+            eval_dataset=None, # For compatibility
             partition='train',
             size=[224, 224],
             device='cpu',
@@ -171,48 +172,110 @@ class StaticDataset(Dataset):
 
 
 class MixedDatasetTrain(Dataset):
-    def __init__(self, protocol_file, size=[224, 224],
-                device='cuda:0', seed=None, steps=1000):
+    def __init__(
+            self,
+            protocol,
+            images_dir,
+            cam_annotations,
+            n_samples,
+            eval_dataset=None, # For compatibility
+            partition='train',
+            size=[224, 224],
+            device='cpu',
+            use_triplet=True,
+            true_ratio=0.3,
+            exclude_idx=[],
+            seed=None
+        ):
 
-        with open(protocol_file, "r") as fd:
+        with open(protocol, "r") as fd:
             protocol = json.load(fd)
 
-        self.protocol = protocol['train']
-        self.cams = list(self.protocol.keys())
+        self.images_dir = images_dir
+        self.dataset = protocol[partition]
+        for k in self.dataset.keys():
+            self.dataset[k] = [os.path.join(self.images_dir, x) for x in self.dataset[k]]
+        self.cams = list(self.dataset.keys())
+
+        self.true_ratio = true_ratio
+        self.use_triplet = use_triplet
 
         self.device = device
         self.size = size
-        self.steps = steps
+        self.n_samples = n_samples
 
         if seed is not None:
             self.seed = seed
 
     def __len__(self):
-        return self.steps
+        return self.n_samples
 
     def __getitem__(self, idx):
-        anchor_class, neg_class = random.sample(self.cams, k=2)
+        if self.use_triplet:
+            anchor_class = random.choice(self.cams)
+            neg_class = anchor_class
+            while neg_class == anchor_class:
+                neg_class = random.choice(self.cams)
 
-        anchor_file, pos_file = random.sample(self.protocol[anchor_class], k=2)
-        neg_file = random.choice(self.protocol[neg_class])
+            anchor_file, pos_file = random.sample(self.dataset[anchor_class], k=2)
+            neg_file = random.choice(self.dataset[neg_class])
 
-        anchor = load_image(f"datasets/images/" + anchor_file + ".jpg", self.size, self.device)
-        pos = load_image(f"datasets/images/" + pos_file + ".jpg", self.size, self.device)
-        neg = load_image(f"datasets/images/" + neg_file + ".jpg", self.size, self.device)
+            anchor = load_image(anchor_file, self.size, self.device)
+            pos = load_image(pos_file, self.size, self.device)
+            neg = load_image(neg_file, self.size, self.device)
 
-        return anchor, pos, neg
+            return anchor, pos, neg
+        else:
+            if random.random() > self.true_ratio:
+                # Negative
+                lb = torch.Tensor([0]).to(self.device).to(torch.long)
 
-class MixedDatasetEval(Dataset):
-    def __init__(self, protocol_file, size=[224, 224], partition='valid',
-                device='cuda:0', seed=None):
+                chosen_classes = random.sample(self.cams, k=2)
+                im1_file = random.choice(self.dataset[chosen_classes[0]])
+                im2_file = random.choice(self.dataset[chosen_classes[1]])
 
-        with open(protocol_file, "r") as fd:
+            else:
+                # Positive
+                lb = torch.Tensor([1]).to(self.device).to(torch.long)
+                chosen_class = random.choice(self.cams)
+                im1_file, im2_file = random.sample(self.dataset[chosen_class], k=2)
+
+            im1 = load_image(im1_file, self.size, self.device)
+            im2 = load_image(im2_file, self.size, self.device)
+
+            return im1, im2, lb
+class StaticDatasetEval(Dataset):
+    def __init__(
+            self,
+            protocol,        # For compatibility
+            images_dir,
+            cam_annotations, # For compatibility
+            n_samples,       # For compatibility
+            eval_dataset, 
+            partition='train', # For compatibility
+            size=[224, 224],
+            device='cpu',
+            use_triplet=True, # For compatibility
+            true_ratio=0.3,   # For compatibility
+            exclude_idx=[],   # For compatibility
+            seed=None         # For compatibility
+        ):
+        with open(eval_dataset, "r") as fd:
             protocol = json.load(fd)
+        self.images_dir = images_dir
 
-        self.protocol = protocol[partition]
-        self.dataset = self.protocol['pairs']
+        #self.protocol = protocol[partition]
+        #self.dataset = self.protocol['pairs']
+        self.dataset = protocol
         random.shuffle(self.dataset)
 
+        for i in range(len(self.dataset)):
+            self.dataset[i] = [
+                os.path.join(self.images_dir, self.dataset[i][0]),
+                os.path.join(self.images_dir, self.dataset[i][1]),
+                self.dataset[i][2]
+            ]
+            
         self.device = device
         self.size = size
 
@@ -227,8 +290,8 @@ class MixedDatasetEval(Dataset):
         label = 1 if label else 0
 
         lb = torch.Tensor([label]).to(self.device).to(torch.long)
-        im1 = load_image(f"datasets/images/" + im1_file + ".jpg", self.size, self.device)
-        im2 = load_image(f"datasets/images/" + im2_file + ".jpg", self.size, self.device)
+        im1 = load_image(im1_file, self.size, self.device)
+        im2 = load_image(im2_file, self.size, self.device)
 
         return im1, im2, lb
 

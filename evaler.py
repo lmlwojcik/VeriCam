@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 from torcheval.metrics.functional import (
         binary_accuracy,
         binary_f1_score,
+        binary_recall,
+        binary_precision,
         binary_confusion_matrix
     )
 
@@ -25,19 +27,27 @@ def gen_metrics(model, dl, loss = None, device = None, verbose = True):
         dl = tqdm(dl, dynamic_ncols=True)
         
     model.eval()
+    nr = 0
+    nt = 0
     with torch.no_grad():
-        for sample in dl:
-            im1, im2, lb = sample
-            
-            ft1 = model(im1)
-            ft2 = model(im2)
+        with dl as tepoch:
+            for sample in tepoch:
+                im1, im2, lb = sample
+                
+                ft1 = model(im1)
+                ft2 = model(im2)
 
-            for g, p, l in zip(ft1, ft2, lb):
-                sim = cosine_similarity(g.squeeze(), p.squeeze(), dim=0)
-                pd = 1 if sim > 0.5 else 0
+                for g, p, l in zip(ft1, ft2, lb):
+                    sim = cosine_similarity(g.squeeze(), p.squeeze(), dim=0)
+                    pd = 1 if sim > 0.5 else 0
 
-                pds.append(pd)
-                gts.append(l[0].item())
+                    pds.append(pd)
+                    gts.append(l[0].item())
+                    nr += 1 if pd == l[0].item() else 0
+                    nt += 1
+                tepoch.set_postfix(acc=f"{nr/nt:.2f}")
+                # print("Recall: ", binary_recall(torch.Tensor(gts).to(torch.int64), torch.Tensor(pds).to(torch.int64)))
+                # print("Precision: ", binary_precision(torch.Tensor(gts).to(torch.int64), torch.Tensor(pds).to(torch.int64)))
             # if loss is not None:
             #     vloss += loss(logits, lb).item()
             #     idx += 1
@@ -57,8 +67,10 @@ def calc_metrics(model, dl, pt='train', loss=None, device=None, return_matrix=Fa
 
     f1 = binary_f1_score(pds,gts).item()
     acc = binary_accuracy(pds,gts).item()
+    prec = binary_precision(pds,gts).item()
+    recall = binary_recall(pds,gts).item()
 
-    metrics = {f"{pt}_acc": acc, f"{pt}_f1": f1}
+    metrics = {f"{pt}_acc": acc, f"{pt}_f1": f1, f"{pt}_prec": prec, f"{pt}_recall": recall}
     if loss is not None:
         metrics[f"{pt}_loss"] = vloss
 

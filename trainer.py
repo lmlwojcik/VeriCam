@@ -12,7 +12,7 @@ import shutil
 from glob import glob
 
 from evaler import calc_metrics
-from dataset import DynamicDataset, StaticDataset, MixedDatasetEval, MixedDatasetTrain
+from dataset import DynamicDataset, StaticDataset, StaticDatasetEval, MixedDatasetTrain
 from utils import start_log, end_log, log_metrics_json, dict_to_table, log_config
 from callbacks import start_training, update_step, conclude_slice
 
@@ -97,13 +97,23 @@ def train_model(model, cfg, data_args, log_cfg=None, seed=None, run_type='intra'
     print("Running experiments at: ", device)
 
     # Generate training dataset and dataloader
-    train_dataset = DynamicDataset(
-        **data_args,
-        n_samples=cfg['train_steps'],
-        partition='train',
-        device=device,
-        seed=seed
-    )
+    if run_type == 'inter':
+        train_dataset = DynamicDataset(
+            **data_args,
+            n_samples=cfg['train_steps'],
+            partition='train',
+            device=device,
+            seed=seed
+        )
+    else:
+        train_dataset = MixedDatasetTrain(
+            **data_args,
+            n_samples=cfg['train_steps'],
+            partition='train',
+            device=device,
+            seed=seed
+        )
+
     train_loader = DataLoader(train_dataset, batch_size=cfg['batch_size'], shuffle=cfg['shuffle'])
 
     # Generate validation dataset and dataloader
@@ -117,10 +127,10 @@ def train_model(model, cfg, data_args, log_cfg=None, seed=None, run_type='intra'
             seed=seed
         )
     else:
-        val_dataset = DynamicDataset(
+        val_dataset = MixedDatasetTrain(
             **data_args,
             n_samples=cfg['val_steps'],
-            partition='train',
+            partition='val',
             use_triplet=False,
             device=device,
             seed=seed
@@ -222,45 +232,22 @@ def train_model(model, cfg, data_args, log_cfg=None, seed=None, run_type='intra'
 
     return model, best_metrics
 
-def eval_model(model, cfg, dataset, log_cfg=None):
+def eval_model(model, cfg, dataset, log_cfg=None, seed=None, run_type='inter'):
     print(cfg, dataset, model)
 
     if cfg['use_gpu'] != -1:
         if len(cfg['use_gpu']) == 1:
             cfg['use_gpu'] = f"cuda:{cfg['use_gpu']}"
         model.to(torch.device(f"{cfg['use_gpu']}"))
+    device = cfg['use_gpu']
     print("Running experiments at", cfg['use_gpu'])
 
     # Generate validation dataset and dataloader
-    known_dataset = MixedDatasetEval(dataset, partition='known_test')
-    known_loader = DataLoader(known_dataset, batch_size=cfg['batch_size'], shuffle=False)
+    eval_dataset = StaticDatasetEval(**dataset, n_samples=-1, device=device, seed=seed)
+    eval_loader = DataLoader(eval_dataset, batch_size=cfg['batch_size'], shuffle=False)
+    metrics_eval = calc_metrics(model, eval_loader, pt='test_known')
 
-    unknown_dataset = MixedDatasetEval(dataset, partition='unknown_test')
-    unknown_loader = DataLoader(unknown_dataset, batch_size=cfg['batch_size'], shuffle=False)
-
-    metrics_known = calc_metrics(model, known_dataset, pt='test_known')
-    metrics_unknown = calc_metrics(model, unknown_dataset, pt='test_unknown')
-    metrics_averaged = {'mean_f1': torch.mean(
-                            [metrics_known['test_known_f1'],
-                             metrics_unknown['test_unknown_f1']]),
-                        'mean_acc': torch.mean(
-                            [metrics_known['test_known_acc'],
-                             metrics_unknown['test_unknown_acc']],    
-                        )}
-    nk = len(known_dataset)
-    uk = len(unknown_dataset)
-    metrics_weighted = {'weighted_f1': ([metrics_known['test_known_f1']*nk + \
-                    metrics_unknown['test_unknown_acc']*uk]) / (nk + uk),
-                        'weighted_acc': ([metrics_known['test_known_acc']*nk + \
-                    metrics_unknown['test_unknown_acc']*uk]) / (nk + uk)}
-
-    all_metrics = {}
-    all_metrics.update(metrics_known)
-    all_metrics.update(metrics_unknown)
-    all_metrics.update(metrics_averaged)
-    all_metrics.update(metrics_weighted)
-
-    return all_metrics
+    return metrics_eval
 
 
 def predict_model(model, cfg, dataset, log_cfg=None):

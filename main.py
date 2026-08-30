@@ -1,4 +1,5 @@
 import random
+import json
 from pathlib import Path
 
 from clargs import get_args
@@ -28,10 +29,17 @@ def main(e_args, t_args):
         model, metrics = train_model(model, cfg, e_args['data_args'], log_cfg=cfg['log_config'], run_type=e_args['run_type'])
 
     if t_args['test_config'] is not None:
-        # eval
+        # Eval
+        if t_args['training_config'] is None: # If model wasn't trained...
+            model = get_model_with_weights(model, None, save_path, 'cuda:0') # Load from checkpoint.
+
         cfg = t_args['test_config']
         cfg['save_path'] = save_path
-        model, metrics = eval_model(model, cfg, e_args['data_args'], log_cfg=cfg['log_config'], run_type=e_args['run_type'])
+        metrics = eval_model(model, cfg, e_args['data_args'], log_cfg=cfg['log_config'], run_type=e_args['run_type'])
+
+        print(metrics)
+        with open(Path(cfg['save_path']) / f"eval_results.json", "w") as fd:
+            json.dump(metrics, fd, indent=2)
 
     if t_args['predict_config'] is not None:
         # predict
