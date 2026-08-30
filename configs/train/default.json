@@ -31,7 +31,7 @@
 
     "dataset_type": "static",
     "shuffle": true,
-    "batch_size": 16,
+    "batch_size": 64,
     "use_triplet": true,
     "train_steps": 5000,
     "val_steps": 500,

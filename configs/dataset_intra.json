@@ -1,0 +1,6 @@
+{
+    "protocol": "/hddevice/nobackup3/lmlwojcik/datasets/LPLCv2/protocols/cvef/intra_baseline.json",
+    "images_dir": "/hddevice/nobackup3/lmlwojcik/datasets/LPLCv2/src_images/",
+    "cam_annotations": "/hddevice/nobackup3/lmlwojcik/datasets/LPLCv2/cams.json",
+    "eval_dataset": "/hddevice/nobackup3/lmlwojcik/datasets/LPLCv2/protocols/cvef/train_out_baseline.json"
+}
